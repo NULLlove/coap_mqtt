@@ -1,0 +1,24 @@
+[2026-08-13 11:04:54] [B] ==== Device B started: listen=:5684  version=1.0.0-B ====
+[2026-08-13 11:04:54] [B] RD mode: RD=127.0.0.1:5685, peer_id=A
+[2026-08-13 11:04:54] [B] Protocol log file: B_log/proto_B.log
+[2026-08-13 11:04:54] [B] RD: auto-registering with RD server...
+[2026-08-13 11:04:55] [B] RD: -> POST /rd?ep=B&base=coap://127.0.0.1:5684&d=local&et=3600 to 127.0.0.1:5685
+[2026-08-13 11:04:55] [B] client: built 117 bytes for uri_path='rd' uri_query='ep=B&base=coap://127.0.0.1:5684&d=local&et=3600':
+[2026-08-13 11:04:55] [B] client: sent request msg_id=13398 to 127.0.0.1:5685, waiting for ACK...
+[2026-08-13 11:04:55] [B] client: received 12 bytes from 127.0.0.1:5685
+[2026-08-13 11:04:55] [B] client: parsed response: msg_id=13398 (expected 13398), type=2, code=41
+[2026-08-13 11:04:55] [B] RD: <- 2.01 Created (registration SUCCESS)
+[2026-08-13 11:05:12] [B] Command: do_all (get_fwinfo + upgrade + get_log)
+[2026-08-13 11:05:12] [B] RD: -> GET /rd?ep=A to 127.0.0.1:5685
+[2026-08-13 11:05:12] [B] client: built 12 bytes for uri_path='rd' uri_query='ep=A':
+[2026-08-13 11:05:12] [B] client: sent request msg_id=13399 to 127.0.0.1:5685, waiting for ACK...
+[2026-08-13 11:05:12] [B] client: received 131 bytes from 127.0.0.1:5685
+[2026-08-13 11:05:12] [B] client: parsed response: msg_id=13399 (expected 13399), type=2, code=45
+[2026-08-13 11:05:12] [B] RD: lookup response: </coap://127.0.0.1:5683/fwinfo>;rt="version",</coap://127.0.0.1:5683/log>;rt="log",</coap://127.0.0.1:5683/firmware>;rt="fw"
+[2026-08-13 11:05:12] [B] RD: resolved peer 'A' -> 127.0.0.1:5683
+[2026-08-13 11:05:12] [B] client: -> GET coap://127.0.0.1:5683/fwinfo
+[2026-08-13 11:05:12] [B] client: built 11 bytes for uri_path='fwinfo' uri_query='':
+[2026-08-13 11:05:12] [B] client: sent request msg_id=13400 to 127.0.0.1:5683, waiting for ACK...
+[2026-08-13 11:05:12] [B] client: received 32 bytes from 127.0.0.1:5683
+[2026-08-13 11:05:12] [B] client: parsed response: msg_id=13400 (expected 13400), type=2, code=45
+[

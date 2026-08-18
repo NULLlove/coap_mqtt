@@ -1,0 +1,11 @@
+[2026-08-17 20:07:02] [A] ==== Device A started: broker=127.0.0.1:1883  version=1.0.0-A ====
+[2026-08-17 20:07:03] [A] Auto-publishing log and fwinfo resources...
+[2026-08-17 20:07:03] [A] pub_rd: -> PUBLISH to 'registry/A/log' (165 bytes)
+[2026-08-17 20:07:03] [A] recv_thread: received PUBACK for packet_id=63846
+[2026-08-17 20:07:03] [A] pub_rd: -> PUBLISH to 'registry/A/fwinfo' (24 bytes)
+[2026-08-17 20:07:03] [A] recv_thread: received PUBACK for packet_id=63847
+[2026-08-17 20:07:31] [A] Command: find_all
+[2026-08-17 20:07:31] [A] find_all: -> SUBSCRIBE to 'registry/+/info'
+[2026-08-17 20:07:31] [A] recv_thread: captured pending SUBACK (pkt_id=63848)
+[2026-08-17 20:07:31] [A] find_all: SUBACK received, waiting for resource info...
+[2026-08-17 20:07:44] [A] ==== Device A finished: version=1.0.0-A ====

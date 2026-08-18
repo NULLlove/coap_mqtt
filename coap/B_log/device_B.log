@@ -1,0 +1,17 @@
+[2026-08-17 18:44:41] [B] ==== Device B started: listen=:5684  version=1.0.0-B ====
+[2026-08-17 18:44:41] [B] RD mode: RD=127.0.0.1:5685, peer_id=A
+[2026-08-17 18:44:41] [B] Protocol log file: B_log/proto_B.log
+[2026-08-17 18:44:41] [B] RD: auto-registering with RD server...
+[2026-08-17 18:44:42] [B] RD: -> POST /rd?ep=B&base=coap://127.0.0.1:5684&d=local&et=3600 to 127.0.0.1:5685
+[2026-08-17 18:44:42] [B] client: built 138 bytes for uri_path='rd' uri_query='ep=B&base=coap://127.0.0.1:5684&d=local&et=3600&from=B':
+[2026-08-17 18:44:42] [B] client: sent request msg_id=58905 to 127.0.0.1:5685, waiting for ACK...
+[2026-08-17 18:44:42] [B] client: received 12 bytes from 127.0.0.1:5685
+[2026-08-17 18:44:42] [B] client: parsed response: msg_id=58905 (expected 58905), type=2, code=41
+[2026-08-17 18:44:42] [B] RD: <- 2.01 Created (registration SUCCESS)
+[2026-08-17 18:44:45] [B] Command: rd_deregister
+[2026-08-17 18:44:45] [B] RD: -> DELETE /rd/B to 127.0.0.1:5685
+[2026-08-17 18:44:45] [B] client: built 16 bytes for uri_path='rd/B' uri_query='from=B':
+[2026-08-17 18:44:45] [B] client: sent request msg_id=58906 to 127.0.0.1:5685, waiting for ACK...
+[2026-08-17 18:44:45] [B] client: received 14 bytes from 127.0.0.1:5685
+[2026-08-17 18:44:45] [B] client: parsed response: msg_id=58906 (expected 58906), type=2, code=42
+[2026-08-17 18:44:45] [B] RD: deregister SUCCESS

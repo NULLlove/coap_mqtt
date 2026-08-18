@@ -1,0 +1,12 @@
+[2026-08-17 20:07:06] [B] ==== Device B started: broker=127.0.0.1:1883  version=1.0.0-B ====
+[2026-08-17 20:07:07] [B] Auto-publishing log and fwinfo resources...
+[2026-08-17 20:07:07] [B] pub_rd: -> PUBLISH to 'registry/B/log' (165 bytes)
+[2026-08-17 20:07:07] [B] recv_thread: received PUBACK for packet_id=63850
+[2026-08-17 20:07:07] [B] pub_rd: -> PUBLISH to 'registry/B/fwinfo' (24 bytes)
+[2026-08-17 20:07:07] [B] recv_thread: received PUBACK for packet_id=63851
+[2026-08-17 20:07:10] [B] Command: sub_rd A log
+[2026-08-17 20:07:10] [B] sub_rd: -> SUBSCRIBE to 'registry/A/log'
+[2026-08-17 20:07:10] [B] Saved peer A log to 'B_log/peer_log_A.log' (165 bytes)
+[2026-08-17 20:07:10] [B] recv_thread: captured pending SUBACK (pkt_id=63852)
+[2026-08-17 20:07:10] [B] sub_rd: SUBACK received for 'registry/A/log'
+[2026-08-17 20:07:46] [B] ==== Device B finished: version=1.0.0-B ====

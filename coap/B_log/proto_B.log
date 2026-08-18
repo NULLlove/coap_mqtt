@@ -1,0 +1,25 @@
+=== CoAP Protocol Log for Device B ===
+
+=== [2026-08-17 18:44:42] SEND (client -> server) ===
+  Type: CON, Code: POST, MsgID: 58905
+  URI: /rd, Payload Len: 72
+  Raw Data (138 bytes): 40 02 E6 19 B2 72 64 11 28 3D 29 65 70 3D 42 26 62 61 73 65 3D 63 6F 61 70 3A 2F 2F 31 32 37 2E 30 2E 30 2E 31 3A 35 36 38 34 26 64 3D 6C 6F 63 61 6C 26 65 74 3D 33 36 30 30 26 66 72 6F 6D 3D ...
+  Payload: </fwinfo>;rt="version";ver="1.0.0-B",</log>;rt="log",</firmware>;rt="fw"
+
+=== [2026-08-17 18:44:42] RECV (client <- server) ===
+  Type: ACK, Code: 2.01 Created, MsgID: 58905
+  URI: /, Payload Len: 5
+  Raw Data (12 bytes): 60 41 E6 19 C1 00 FF 2F 72 64 2F 42 
+  Payload: /rd/B
+
+=== [2026-08-17 18:44:45] SEND (client -> server) ===
+  Type: CON, Code: DELETE, MsgID: 58906
+  URI: /rd/B, Payload Len: 0
+  Raw Data (16 bytes): 40 04 E6 1A B2 72 64 01 42 46 66 72 6F 6D 3D 42 
+
+=== [2026-08-17 18:44:45] RECV (client <- server) ===
+  Type: ACK, Code: 2.02 Deleted, MsgID: 58906
+  URI: /, Payload Len: 7
+  Raw Data (14 bytes): 60 42 E6 1A C1 00 FF 64 65 6C 65 74 65 64 
+  Payload: deleted
+

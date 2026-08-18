@@ -1,0 +1,24 @@
+=== CoAP Protocol Log for Device A ===
+
+=== [2026-08-17 18:44:37] SEND (client -> server) ===
+  Type: CON, Code: POST, MsgID: 58900
+  URI: /rd, Payload Len: 72
+  Raw Data (138 bytes): 40 02 E6 14 B2 72 64 11 28 3D 29 65 70 3D 41 26 62 61 73 65 3D 63 6F 61 70 3A 2F 2F 31 32 37 2E 30 2E 30 2E 31 3A 35 36 38 33 26 64 3D 6C 6F 63 61 6C 26 65 74 3D 33 36 30 30 26 66 72 6F 6D 3D ...
+  Payload: </fwinfo>;rt="version";ver="1.0.0-A",</log>;rt="log",</firmware>;rt="fw"
+
+=== [2026-08-17 18:44:37] RECV (client <- server) ===
+  Type: ACK, Code: 2.01 Created, MsgID: 58900
+  URI: /, Payload Len: 5
+  Raw Data (12 bytes): 60 41 E6 14 C1 00 FF 2F 72 64 2F 41 
+  Payload: /rd/A
+
+=== [2026-08-17 18:44:50] SEND (client -> server) ===
+  Type: CON, Code: GET, MsgID: 58901
+  URI: /rd, Payload Len: 0
+  Raw Data (19 bytes): 40 01 E6 15 B2 72 64 4B 65 70 3D 42 26 66 72 6F 6D 3D 41 
+
+=== [2026-08-17 18:44:50] RECV (client <- server) ===
+  Type: ACK, Code: 2.05 Content, MsgID: 58901
+  URI: /, Payload Len: 0
+  Raw Data (6 bytes): 60 45 E6 15 C1 28 
+

@@ -1,0 +1,31 @@
+=== MQTT Protocol Log for Device A ===
+
+=== [2026-08-17 20:07:03] SEND (PUBLISH) ===
+  Type: 3, Topic: registry/A/log, QoS: 1
+  Payload (165 bytes): [2026-08-17 20:07:02] [A] ==== Device A started: broker=127.0.0.1:1883  version=1.0.0-A ====
+[2026-08-17 20:07:03] [A] Auto-publishing log and fwinfo resources...
+
+
+=== [2026-08-17 20:07:03] SEND (PUBLISH) ===
+  Type: 3, Topic: registry/A/fwinfo, QoS: 1
+  Payload (24 bytes): version=1.0.0-A,size=268
+
+=== [2026-08-17 20:07:31] SEND (SUBSCRIBE) ===
+  Type: 8, Topic: registry/+/info, QoS: 1
+
+=== [2026-08-17 20:07:31] RECV (PUBLISH) ===
+  Type: 3, Topic: registry/info, QoS: 1
+  Payload (47 bytes): resource=registry/B/fwinfo,client=B,type=fwinfo
+
+=== [2026-08-17 20:07:31] RECV (PUBLISH) ===
+  Type: 3, Topic: registry/info, QoS: 1
+  Payload (41 bytes): resource=registry/B/log,client=B,type=log
+
+=== [2026-08-17 20:07:31] RECV (PUBLISH) ===
+  Type: 3, Topic: registry/info, QoS: 1
+  Payload (47 bytes): resource=registry/A/fwinfo,client=A,type=fwinfo
+
+=== [2026-08-17 20:07:31] RECV (PUBLISH) ===
+  Type: 3, Topic: registry/info, QoS: 1
+  Payload (41 bytes): resource=registry/A/log,client=A,type=log
+

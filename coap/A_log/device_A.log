@@ -1,0 +1,17 @@
+[2026-08-17 18:44:37] [A] ==== Device A started: listen=:5683  version=1.0.0-A ====
+[2026-08-17 18:44:37] [A] RD mode: RD=127.0.0.1:5685, peer_id=B
+[2026-08-17 18:44:37] [A] Protocol log file: A_log/proto_A.log
+[2026-08-17 18:44:37] [A] RD: auto-registering with RD server...
+[2026-08-17 18:44:37] [A] RD: -> POST /rd?ep=A&base=coap://127.0.0.1:5683&d=local&et=3600 to 127.0.0.1:5685
+[2026-08-17 18:44:37] [A] client: built 138 bytes for uri_path='rd' uri_query='ep=A&base=coap://127.0.0.1:5683&d=local&et=3600&from=A':
+[2026-08-17 18:44:37] [A] client: sent request msg_id=58900 to 127.0.0.1:5685, waiting for ACK...
+[2026-08-17 18:44:37] [A] client: received 12 bytes from 127.0.0.1:5685
+[2026-08-17 18:44:37] [A] client: parsed response: msg_id=58900 (expected 58900), type=2, code=41
+[2026-08-17 18:44:37] [A] RD: <- 2.01 Created (registration SUCCESS)
+[2026-08-17 18:44:50] [A] Command: rd_lookup B
+[2026-08-17 18:44:50] [A] RD: -> GET /rd?ep=B to 127.0.0.1:5685
+[2026-08-17 18:44:50] [A] client: built 19 bytes for uri_path='rd' uri_query='ep=B&from=A':
+[2026-08-17 18:44:50] [A] client: sent request msg_id=58901 to 127.0.0.1:5685, waiting for ACK...
+[2026-08-17 18:44:50] [A] client: received 6 bytes from 127.0.0.1:5685
+[2026-08-17 18:44:50] [A] client: parsed response: msg_id=58901 (expected 58901), type=2, code=45
+[2026-08-17 18:44:50] [A] RD: lookup returned 2.05 Content (peer 'B' not registered), fallback to static
