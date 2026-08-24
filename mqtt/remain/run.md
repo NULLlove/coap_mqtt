@@ -2,8 +2,8 @@
 
 ## 编译
 
-    gcc -Wall -Wextra -O2 -o broker.exe mqtt.c broker.c -lws2_32
-    gcc -Wall -Wextra -O2 -o device.exe mqtt.c device.c -lws2_32
+    gcc -O2 -o broker.exe mqtt.c broker.c -lws2_32
+    gcc -O2 -o device.exe mqtt.c device.c -lws2_32
 
 ## 运行
 

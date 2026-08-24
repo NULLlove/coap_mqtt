@@ -33,9 +33,9 @@
 
 ### 运行
 
-    rd_server.exe --port 5685 --ttl 3600
-    device.exe --id A --port 5683 --peer-id B --rd-ip 127.0.0.1 --rd-port 5685 --version 1.0.0-A
-    device.exe --id B --port 5684 --peer-id A --rd-ip 127.0.0.1 --rd-port 5685 --version 1.0.0-B
+    .\rd_server.exe --port 5685 --ttl 3600
+    .\device.exe --id A --port 5683 --peer-id B --rd-ip 127.0.0.1 --rd-port 5685 --version 1.0.0-A
+    .\device.exe --id B --port 5684 --peer-id A --rd-ip 127.0.0.1 --rd-port 5685 --version 1.0.0-B
 
 ### 命令行操作
 
