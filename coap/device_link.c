@@ -979,10 +979,10 @@ static void cmd_get_log(device_t *d, int peer_n) {
                 ip, port, coap_response_name(resp.code), resp.payload_len);
         printf("---- log from %s:%u ----\n%s\n---- end ----\n", ip, port, body);
 
-        /* 落盘: 保存到 <id>_log/peer_log_<ip>_<port>.log (覆盖旧文件) */
+        /* 落盘: 保存到 device_<id>_log/peer_log_<ip>_<port>.log (覆盖旧文件) */
         char save_path[128];
         snprintf(save_path, sizeof(save_path),
-                 "%s_log/peer_log_%s_%u.log", d->id, ip, port);
+                 "device_%s_log/peer_log_%s_%u.log", d->id, ip, port);
         FILE *out = fopen(save_path, "w");
         if (out) {
             fwrite(body, 1, cpy, out);
@@ -1194,14 +1194,14 @@ int main(int argc, char **argv) {
     {
         char dir_cmd[512];
         snprintf(dir_cmd, sizeof(dir_cmd),
-                 "cmd /c \"if not exist %s_log mkdir %s_log & "
-                 "if not exist %s_bin mkdir %s_bin\"",
+                 "cmd /c \"if not exist device_%s_log mkdir device_%s_log & "
+                 "if not exist device_%s_bin mkdir device_%s_bin\"",
                  d.id, d.id, d.id, d.id);
         system(dir_cmd);
     }
-    snprintf(d.fw_path,      sizeof(d.fw_path),      "%s_bin/firmware_%s.bin", d.id, d.id);
-    snprintf(d.fw_orig_path, sizeof(d.fw_orig_path), "%s_bin/firmware_%s_orig.bin", d.id, d.id);
-    snprintf(d.log_path,     sizeof(d.log_path),     "%s_log/device_%s.log", d.id, d.id);
+    snprintf(d.fw_path,      sizeof(d.fw_path),      "device_%s_bin/firmware_%s.bin", d.id, d.id);
+    snprintf(d.fw_orig_path, sizeof(d.fw_orig_path), "device_%s_bin/firmware_%s_orig.bin", d.id, d.id);
+    snprintf(d.log_path,     sizeof(d.log_path),     "device_%s_log/device_%s.log", d.id, d.id);
 
     /* 创建初始固件文件 (当前 + 原始副本, 用于升级对端) */
     {
@@ -1223,7 +1223,7 @@ int main(int argc, char **argv) {
     {
         char proto_path[96];
         snprintf(proto_path, sizeof(proto_path),
-                 "%s_log/proto_%s.log", d.id, d.id);
+                 "device_%s_log/proto_%s.log", d.id, d.id);
         d.proto_fp = fopen(proto_path, "w");
         if (d.proto_fp) {
             time_t now = time(NULL);

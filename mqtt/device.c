@@ -425,8 +425,8 @@ static void save_subscribed_resource(device_t *d, const char *peer_id,
     char filepath[256];
 
     if (strcmp(topic_type, "log") == 0) {
-        /* 日志: <id>_log/peer_log_<peer_id>.log */
-        snprintf(filepath, sizeof(filepath), "%s_log/peer_log_%s.log", d->id, peer_id);
+        /* 日志: device_<id>_log/peer_log_<peer_id>.log */
+        snprintf(filepath, sizeof(filepath), "device_%s_log/peer_log_%s.log", d->id, peer_id);
         FILE *fp = fopen(filepath, "wb");
         if (fp) {
             fwrite(payload, 1, payload_len, fp);
@@ -434,8 +434,8 @@ static void save_subscribed_resource(device_t *d, const char *peer_id,
             dev_log(d, "Saved peer %s log to '%s' (%zu bytes)", peer_id, filepath, payload_len);
         }
     } else if (strcmp(topic_type, "firmware") == 0) {
-        /* 固件: <id>_log/peer_firmware_<peer_id>.bin */
-        snprintf(filepath, sizeof(filepath), "%s_bin/peer_firmware_%s.bin", d->id, peer_id);
+        /* 固件: device_<id>_bin/peer_firmware_<peer_id>.bin */
+        snprintf(filepath, sizeof(filepath), "device_%s_bin/peer_firmware_%s.bin", d->id, peer_id);
         FILE *fp = fopen(filepath, "wb");
         if (fp) {
             fwrite(payload, 1, payload_len, fp);
@@ -443,8 +443,8 @@ static void save_subscribed_resource(device_t *d, const char *peer_id,
             dev_log(d, "Saved peer %s firmware to '%s' (%zu bytes)", peer_id, filepath, payload_len);
         }
     } else if (strcmp(topic_type, "fwinfo") == 0) {
-        /* 固件信息: <id>_log/peer_fwinfo_<peer_id>.txt */
-        snprintf(filepath, sizeof(filepath), "%s_log/peer_fwinfo_%s.txt", d->id, peer_id);
+        /* 固件信息: device_<id>_log/peer_fwinfo_<peer_id>.txt */
+        snprintf(filepath, sizeof(filepath), "device_%s_log/peer_fwinfo_%s.txt", d->id, peer_id);
         FILE *fp = fopen(filepath, "wb");
         if (fp) {
             fwrite(payload, 1, payload_len, fp);
@@ -601,7 +601,7 @@ static DWORD WINAPI recv_thread(LPVOID arg) {
                 /* 日志资源: retain=1 全量覆盖, retain=0 增量追加 */
                 if (strcmp(topic_type, "log") == 0) {
                     char filepath[256];
-                    snprintf(filepath, sizeof(filepath), "%s_log/peer_log_%s.log", d->id, peer_id);
+                    snprintf(filepath, sizeof(filepath), "device_%s_log/peer_log_%s.log", d->id, peer_id);
                     const char *mode = msg.retain ? "wb" : "ab";
                     FILE *fp = fopen(filepath, mode);
                     if (fp) {
@@ -618,7 +618,7 @@ static DWORD WINAPI recv_thread(LPVOID arg) {
                     if (strcmp(topic_type, "firmware") == 0) {
                         char fw_filepath[256];
                         snprintf(fw_filepath, sizeof(fw_filepath),
-                                 "%s_bin/peer_firmware_%s.bin", d->id, peer_id);
+                                 "device_%s_bin/peer_firmware_%s.bin", d->id, peer_id);
                         if (check_and_upgrade_firmware(d, peer_id, fw_filepath)) {
                             publish_fwinfo(d);
                         }
@@ -699,17 +699,17 @@ int main(int argc, char **argv) {
     {
         char dir_cmd[512];
         snprintf(dir_cmd, sizeof(dir_cmd),
-                 "cmd /c \"if not exist %s_log mkdir %s_log & "
-                 "if not exist %s_bin mkdir %s_bin\"",
+                 "cmd /c \"if not exist device_%s_log mkdir device_%s_log & "
+                 "if not exist device_%s_bin mkdir device_%s_bin\"",
                  d.id, d.id, d.id, d.id);
         system(dir_cmd);
     }
 
     /* 构造文件路径 */
-    snprintf(d.fw_path, sizeof(d.fw_path), "%s_bin/firmware_%s.bin", d.id, d.id);
-    snprintf(d.fw_orig_path, sizeof(d.fw_orig_path), "%s_bin/firmware_%s_orig.bin", d.id, d.id);
-    snprintf(d.log_path, sizeof(d.log_path), "%s_log/device_%s.log", d.id, d.id);
-    snprintf(d.proto_log_path, sizeof(d.proto_log_path), "%s_log/proto_%s.log", d.id, d.id);
+    snprintf(d.fw_path, sizeof(d.fw_path), "device_%s_bin/firmware_%s.bin", d.id, d.id);
+    snprintf(d.fw_orig_path, sizeof(d.fw_orig_path), "device_%s_bin/firmware_%s_orig.bin", d.id, d.id);
+    snprintf(d.log_path, sizeof(d.log_path), "device_%s_log/device_%s.log", d.id, d.id);
+    snprintf(d.proto_log_path, sizeof(d.proto_log_path), "device_%s_log/proto_%s.log", d.id, d.id);
 
     if (d.id[0] == 0) {
         fprintf(stderr, "Usage: %s --id A --broker-ip 127.0.0.1 --broker-port 1883 [--version 1.0.0-A]\n", argv[0]);

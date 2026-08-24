@@ -1,0 +1,14 @@
+=== CoAP Protocol Log for Device A ===
+
+=== [2026-08-24 18:54:54] SEND (client -> server) ===
+  Type: CON, Code: POST, MsgID: 8958
+  URI: /rd, Payload Len: 72
+  Raw Data (138 bytes): 40 02 22 FE B2 72 64 11 28 3D 29 65 70 3D 41 26 62 61 73 65 3D 63 6F 61 70 3A 2F 2F 31 32 37 2E 30 2E 30 2E 31 3A 35 36 38 33 26 64 3D 6C 6F 63 61 6C 26 65 74 3D 33 36 30 30 26 66 72 6F 6D 3D ...
+  Payload: </fwinfo>;rt="version";ver="1.0.0-A",</log>;rt="log",</firmware>;rt="fw"
+
+=== [2026-08-24 18:54:54] SEND (client -> server) ===
+  Type: CON, Code: POST, MsgID: 8958
+  URI: /rd, Payload Len: 72
+  Raw Data (138 bytes): 40 02 22 FE B2 72 64 11 28 3D 29 65 70 3D 41 26 62 61 73 65 3D 63 6F 61 70 3A 2F 2F 31 32 37 2E 30 2E 30 2E 31 3A 35 36 38 33 26 64 3D 6C 6F 63 61 6C 26 65 74 3D 33 36 30 30 26 66 72 6F 6D 3D ...
+  Payload: </fwinfo>;rt="version";ver="1.0.0-A",</log>;rt="log",</firmware>;rt="fw"
+

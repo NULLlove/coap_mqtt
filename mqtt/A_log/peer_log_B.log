@@ -1,8 +1,0 @@
-[2026-08-24 16:59:12] [B] ==== Device B started: broker=127.0.0.1:1883  version=1.0.0-B ====
-[2026-08-24 16:59:13] [B] Auto-publishing log, fwinfo and status resources...
-[2026-08-24 16:59:13] [B] pub_rd: -> PUBLISH to 'registry/B/log' (173 bytes)
-[2026-08-24 16:59:13] [B] recv_thread: received PUBACK for packet_id=2016
-[2026-08-24 16:59:13] [B] pub_rd: -> PUBLISH to 'registry/B/fwinfo' (24 bytes)
-[2026-08-24 16:59:13] [B] recv_thread: received PUBACK for packet_id=2017
-[2026-08-24 16:59:13] [B] recv_thread: received PUBACK for packet_id=2018
-[2026-08-24 16:59:56] [B] Command: pub_rd log

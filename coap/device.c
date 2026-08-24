@@ -1890,7 +1890,7 @@ static void client_get_log(device_t *d) {
         /* 保存对端日志到本机日志目录 */
         {
             char peer_log_path[128];
-            snprintf(peer_log_path, sizeof(peer_log_path), "%s_log/peer_log_%s.log",
+            snprintf(peer_log_path, sizeof(peer_log_path), "device_%s_log/peer_log_%s.log",
                      d->id, d->peer_port == 5683 ? "A" : (d->peer_port == 5684 ? "B" : "peer"));
             FILE *pf = fopen(peer_log_path, "wb");
             if (pf) {
@@ -2060,7 +2060,7 @@ static void client_get_fw_by_version(device_t *d, const char *version) {
 
         /* 保存获取到的固件到本机 */
         char save_path[128];
-        snprintf(save_path, sizeof(save_path), "%s_bin/firmware_%s_peer_%s.bin",
+        snprintf(save_path, sizeof(save_path), "device_%s_bin/firmware_%s_peer_%s.bin",
                  d->id, version, d->peer_port == 5683 ? "A" : (d->peer_port == 5684 ? "B" : "peer"));
         FILE *pf = fopen(save_path, "wb");
         if (pf) {
@@ -2105,7 +2105,7 @@ static void client_get_log_by_time(device_t *d, const char *start_time, const ch
 
         /* 保存对端日志到本机 */
         char peer_log_path[128];
-        snprintf(peer_log_path, sizeof(peer_log_path), "%s_log/peer_log_%s_%s.log",
+        snprintf(peer_log_path, sizeof(peer_log_path), "device_%s_log/peer_log_%s_%s.log",
                  d->id, d->peer_port == 5683 ? "A" : (d->peer_port == 5684 ? "B" : "peer"),
                  start_time ? start_time : "all");
         FILE *pf = fopen(peer_log_path, "wb");
@@ -2167,7 +2167,7 @@ static int client_get_log_by_id(device_t *d, const char *peer_id,
 
     /* 保存完整日志 */
     char path[128];
-    snprintf(path, sizeof(path), "%s_log/peer_log_%s.log", d->id, peer_id);
+    snprintf(path, sizeof(path), "device_%s_log/peer_log_%s.log", d->id, peer_id);
     FILE *pf = fopen(path, "wb");
     if (pf && resp.payload_len > 0) {
         fwrite(resp.payload, 1, resp.payload_len, pf);
@@ -2503,9 +2503,9 @@ int main(int argc, char **argv) {   //有参main函数，传递ip等信息
     {
         char dir_cmd[512];
         snprintf(dir_cmd, sizeof(dir_cmd),
-                 "cmd /c \"if not exist %s_log mkdir %s_log & "
-                 "if not exist %s_bin mkdir %s_bin & "
-                 "if not exist %s_bin\\versions mkdir %s_bin\\versions\"",
+                 "cmd /c \"if not exist device_%s_log mkdir device_%s_log & "
+                 "if not exist device_%s_bin mkdir device_%s_bin & "
+                 "if not exist device_%s_bin\\versions mkdir device_%s_bin\\versions\"",
                  d.id, d.id, d.id, d.id, d.id, d.id);
         dev_log(&d, "Creating directories: %s", dir_cmd);
         int ret = system(dir_cmd);
@@ -2513,11 +2513,11 @@ int main(int argc, char **argv) {   //有参main函数，传递ip等信息
     }
 
     /* 构造文件路径 */
-    snprintf(d.fw_path,       sizeof(d.fw_path),       "%s_bin/firmware_%s.bin", d.id, d.id);
-    snprintf(d.fw_orig_path,  sizeof(d.fw_orig_path),  "%s_bin/firmware_%s_orig.bin", d.id, d.id);
-    snprintf(d.fw_versions_dir, sizeof(d.fw_versions_dir), "%s_bin/versions", d.id);
-    snprintf(d.log_path,      sizeof(d.log_path),      "%s_log/device_%s.log", d.id, d.id);
-    snprintf(d.proto_log_path, sizeof(d.proto_log_path), "%s_log/proto_%s.log", d.id, d.id);
+    snprintf(d.fw_path,       sizeof(d.fw_path),       "device_%s_bin/firmware_%s.bin", d.id, d.id);
+    snprintf(d.fw_orig_path,  sizeof(d.fw_orig_path),  "device_%s_bin/firmware_%s_orig.bin", d.id, d.id);
+    snprintf(d.fw_versions_dir, sizeof(d.fw_versions_dir), "device_%s_bin/versions", d.id);
+    snprintf(d.log_path,      sizeof(d.log_path),      "device_%s_log/device_%s.log", d.id, d.id);
+    snprintf(d.proto_log_path, sizeof(d.proto_log_path), "device_%s_log/proto_%s.log", d.id, d.id);
 
 
     //输入参数检查

@@ -1,0 +1,15 @@
+[2026-08-24 18:54:54] [A] ==== Device A started: listen=:5683  version=1.0.0-A ====
+[2026-08-24 18:54:54] [A] RD mode: RD=127.0.0.1:5685, peer_id=B
+[2026-08-24 18:54:54] [A] Protocol log file: device_A_log/proto_A.log
+[2026-08-24 18:54:54] [A] RD: auto-registering with RD server...
+[2026-08-24 18:54:54] [A] sync: firmware version '1.0.0-A' matches memory, no change
+[2026-08-24 18:54:54] [A] RD: -> POST /rd?ep=A&base=coap://127.0.0.1:5683&d=local&et=3600 to 127.0.0.1:5685
+[2026-08-24 18:54:54] [A] client: built 138 bytes for uri_path='rd' uri_query='ep=A&base=coap://127.0.0.1:5683&d=local&et=3600&from=A':
+[2026-08-24 18:54:54] [A] client: sent request msg_id=8958 to 127.0.0.1:5685, waiting for ACK...
+[2026-08-24 18:54:54] [A] client: recv timeout (n=-1)
+[2026-08-24 18:54:54] [A] client: no matching ACK, retry 1
+[2026-08-24 18:54:54] [A] client: sent request msg_id=8958 to 127.0.0.1:5685, waiting for ACK...
+[2026-08-24 18:54:54] [A] client: recv timeout (n=-1)
+[2026-08-24 18:54:54] [A] client: no matching ACK, retry 2
+[2026-08-24 18:54:54] [A] RD: registration failed (no response from RD)
+[2026-08-24 18:55:39] [A] ==== Device A finished: final version=1.0.0-A ====
