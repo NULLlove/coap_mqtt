@@ -166,11 +166,11 @@ int mqtt_encode_remaining_length(uint8_t *buf, size_t buflen, uint32_t value) {
     int off = 0;
     do {
         if ((size_t)off >= buflen) return -1;
-        uint8_t byte = (uint8_t)(value % 128);
+        uint8_t byte = (uint8_t)(value % 128); /* 取低 7 位 */
         value /= 128; 
-        if (value > 0) byte |= 0x80;
-        buf[off++] = byte;  
-    } while (value > 0);
+        if (value > 0) byte |= 0x80;  /* 最高位为 1 */
+               buf[off++] = byte;  
+    } while (value > 0); 
     return off;
 }
 
@@ -221,8 +221,16 @@ int mqtt_build(uint8_t *buf, size_t buflen, const mqtt_msg_t *m) {
             memcpy(remaining + rlen, "MQTT", 4); rlen += 4;
             /* Protocol Level: 4 (MQTT 3.1.1) */
             remaining[rlen++] = 0x04;
-            /* Connect Flags: Clean Session = 1, 其余 = 0 */
-            remaining[rlen++] = 0x02;
+            /* Connect Flags: Clean Session = 1, Will = (will_topic 非空时置位) */
+            {
+                uint8_t flags = 0x02;  /* Clean Session */
+                if (m->will_topic[0] != '\0') {
+                    flags |= 0x04;          /* Will Flag */
+                    flags |= (0x01 << 3);   /* Will QoS 0 */
+                    /* Will Retain = 0 */
+                }
+                remaining[rlen++] = flags;
+            }
             /* Keep Alive (复用 packet_id 字段) */
             uint16_t ka = m->packet_id;
             remaining[rlen++] = (uint8_t)(ka >> 8);
@@ -234,6 +242,19 @@ int mqtt_build(uint8_t *buf, size_t buflen, const mqtt_msg_t *m) {
             remaining[rlen++] = (uint8_t)(cid_len >> 8);
             remaining[rlen++] = (uint8_t)(cid_len & 0xff);
             memcpy(remaining + rlen, cid, cid_len); rlen += cid_len;
+            /* Will Topic + Will Message (仅当 will_flag 置位时) */
+            if (m->will_topic[0] != '\0') {
+                size_t wt_len = strlen(m->will_topic);
+                remaining[rlen++] = (uint8_t)(wt_len >> 8);
+                remaining[rlen++] = (uint8_t)(wt_len & 0xff);
+                memcpy(remaining + rlen, m->will_topic, wt_len); rlen += wt_len;
+
+                size_t wm_len = strlen(m->will_message);
+                if (wm_len > 65535) wm_len = 65535;
+                remaining[rlen++] = (uint8_t)(wm_len >> 8);
+                remaining[rlen++] = (uint8_t)(wm_len & 0xff);
+                memcpy(remaining + rlen, m->will_message, wm_len); rlen += wm_len;
+            }
             break;
         }
         case MQTT_CONNACK: {
@@ -286,6 +307,23 @@ int mqtt_build(uint8_t *buf, size_t buflen, const mqtt_msg_t *m) {
             remaining[rlen++] = m->return_code;
             break;
         }
+        case MQTT_UNSUBSCRIBE: {
+            /* Packet ID */
+            remaining[rlen++] = (uint8_t)(m->packet_id >> 8);
+            remaining[rlen++] = (uint8_t)(m->packet_id & 0xff);
+            /* Topic Filter */
+            size_t tlen = strlen(m->topic);
+            if (tlen > 65535) tlen = 65535;
+            remaining[rlen++] = (uint8_t)(tlen >> 8);
+            remaining[rlen++] = (uint8_t)(tlen & 0xff);
+            memcpy(remaining + rlen, m->topic, tlen); rlen += tlen;
+            break;
+        }
+        case MQTT_UNSUBACK: {
+            remaining[rlen++] = (uint8_t)(m->packet_id >> 8);
+            remaining[rlen++] = (uint8_t)(m->packet_id & 0xff);
+            break;
+        }
         case MQTT_PINGREQ:
         case MQTT_PINGRESP:
         case MQTT_DISCONNECT:
@@ -303,6 +341,7 @@ int mqtt_build(uint8_t *buf, size_t buflen, const mqtt_msg_t *m) {
         if (m->retain) fixed[0] |= 0x01;
     }
     if (m->type == MQTT_SUBSCRIBE)  fixed[0] |= 0x02;  /* 固定 flags */
+    if (m->type == MQTT_UNSUBSCRIBE) fixed[0] |= 0x02;  /* 固定 flags */
     if (m->type == MQTT_PUBACK)     fixed[0] |= 0x00;
 
     int rl_len = mqtt_encode_remaining_length(fixed + 1, sizeof(fixed) - 1, (uint32_t)rlen);
@@ -350,6 +389,7 @@ int mqtt_parse(const uint8_t *buf, size_t len, mqtt_msg_t *m) {
         case MQTT_CONNECT: {
             /* 跳过 Protocol Name + Level + Flags + KeepAlive = 10 字节 */
             if (plen < 10) return -1;
+            uint8_t connect_flags = p[7];
             /* ClientID */
             size_t cid_len = ((size_t)p[10] << 8) | p[11];
             if (12 + cid_len > plen) cid_len = plen - 12;
@@ -357,6 +397,29 @@ int mqtt_parse(const uint8_t *buf, size_t len, mqtt_msg_t *m) {
             memcpy(m->topic, p + 12, cid_len);
             m->topic[cid_len] = '\0';
             m->packet_id = ((uint16_t)p[8] << 8) | p[9];  /* KeepAlive */
+            /* Will Topic + Will Message (仅当 Will Flag 置位时) */
+            if (connect_flags & 0x04) {
+                size_t off = 12 + cid_len;
+                if (off + 2 <= plen) {
+                    size_t wt_len = ((size_t)p[off] << 8) | p[off + 1];
+                    off += 2;
+                    if (off + wt_len <= plen) {
+                        if (wt_len >= sizeof(m->will_topic)) wt_len = sizeof(m->will_topic) - 1;
+                        memcpy(m->will_topic, p + off, wt_len);
+                        m->will_topic[wt_len] = '\0';
+                        off += wt_len;
+                    }
+                }
+                if (off + 2 <= plen) {
+                    size_t wm_len = ((size_t)p[off] << 8) | p[off + 1];
+                    off += 2;
+                    if (off + wm_len <= plen) {
+                        if (wm_len >= sizeof(m->will_message)) wm_len = sizeof(m->will_message) - 1;
+                        memcpy(m->will_message, p + off, wm_len);
+                        m->will_message[wm_len] = '\0';
+                    }
+                }
+            }
             break;
         }
         case MQTT_CONNACK: {
@@ -408,6 +471,21 @@ int mqtt_parse(const uint8_t *buf, size_t len, mqtt_msg_t *m) {
             if (plen < 3) return -1;
             m->packet_id = ((uint16_t)p[0] << 8) | p[1];
             m->return_code = p[2];
+            break;
+        }
+        case MQTT_UNSUBSCRIBE: {
+            if (plen < 4) return -1;
+            m->packet_id = ((uint16_t)p[0] << 8) | p[1];
+            size_t tlen = ((size_t)p[2] << 8) | p[3];
+            if (tlen >= sizeof(m->topic)) tlen = sizeof(m->topic) - 1;
+            if (4 + tlen > plen) return -1;
+            memcpy(m->topic, p + 4, tlen);
+            m->topic[tlen] = '\0';
+            break;
+        }
+        case MQTT_UNSUBACK: {
+            if (plen < 2) return -1;
+            m->packet_id = ((uint16_t)p[0] << 8) | p[1];
             break;
         }
         case MQTT_PINGREQ:
@@ -500,11 +578,18 @@ int mqtt_topic_match(const char *filter, const char *topic) {
  *   - client_id: 客户端 ID (e.g., "client123")
  *   - keepalive: 保持连接时间 (单位: 秒)
  */
-void mqtt_make_connect(mqtt_msg_t *m, const char *client_id, uint16_t keepalive) {
+void mqtt_make_connect(mqtt_msg_t *m, const char *client_id, uint16_t keepalive,
+                       const char *will_topic, const char *will_message) {
     memset(m, 0, sizeof(*m));
     m->type      = MQTT_CONNECT;
     m->packet_id = keepalive;  /* 复用 packet_id 存放 KeepAlive */
     strncpy(m->topic, client_id, sizeof(m->topic) - 1);
+    if (will_topic) {
+        strncpy(m->will_topic, will_topic, sizeof(m->will_topic) - 1);
+    }
+    if (will_message) {
+        strncpy(m->will_message, will_message, sizeof(m->will_message) - 1);
+    }
 }
 
 /* 构造 MQTT 发布报文函数
@@ -540,6 +625,19 @@ void mqtt_make_subscribe(mqtt_msg_t *m, const char *topic_filter, uint8_t qos, u
     memset(m, 0, sizeof(*m));
     m->type      = MQTT_SUBSCRIBE;
     m->qos       = qos;
+    m->packet_id = packet_id;
+    strncpy(m->topic, topic_filter, sizeof(m->topic) - 1);
+}
+
+/* 构造 MQTT 取消订阅报文函数
+ * 输入:
+ *   - m: 要填充的 MQTT 消息结构体指针
+ *   - topic_filter: 取消订阅的主题过滤器
+ *   - packet_id: 取消订阅包 ID
+ */
+void mqtt_make_unsubscribe(mqtt_msg_t *m, const char *topic_filter, uint16_t packet_id) {
+    memset(m, 0, sizeof(*m));
+    m->type      = MQTT_UNSUBSCRIBE;
     m->packet_id = packet_id;
     strncpy(m->topic, topic_filter, sizeof(m->topic) - 1);
 }

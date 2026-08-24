@@ -3,8 +3,9 @@
  *
  * 一个可执行程序通过命令行参数实例化为一台设备, 多进程方式启动两台:
  *
- *   device.exe --id A --port 5683 --peer-ip 127.0.0.1 --peer-port 5684 --version 1.0.0-A
- *   device.exe --id B --port 5684 --peer-ip 127.0.0.1 --peer-port 5683 --version 1.0.0-B
+ *   .\device.exe --id A --port 5683 --peer-ip 127.0.0.1 --peer-port 5684 --version 1.0.0-A
+ *  
+ *   .\device.exe --id B --port 5684 --peer-ip 127.0.0.1 --peer-port 5683 --version 1.0.0-B
  *
  * 每台设备同时扮演两个角色:
  *   1) 服务器 (后台线程, srv_sock): 暴露 CoAP 资源
@@ -209,6 +210,29 @@ static size_t read_fw_info(const char *path, char *version_buf, size_t vbuf_size
     }
     fclose(fw);
     return fsize > 0 ? (size_t)fsize : 0;
+}
+
+/* ---------- 从固件文件第一行同步版本号到内存 d->version ---------- */
+/* 用于手动修改固件文件后，rd_register/rd_update 时重新读取版本再注册 */
+static void sync_version_from_fwfile(device_t *d) {
+    char file_ver[32] = {0};
+    /* 读取固件文件第一行的版本号 */
+    read_fw_info(d->fw_path, file_ver, sizeof(file_ver));
+
+    if (file_ver[0] == '\0') {
+        dev_log(d, "sync: firmware file has no version line, keep memory version '%s'", d->version);
+        return;
+    }
+
+    if (strcmp(file_ver, d->version) == 0) {
+        dev_log(d, "sync: firmware version '%s' matches memory, no change", d->version);
+        return;
+    }
+
+    /* 文件版本与内存版本不一致 → 同步到内存 */
+    dev_log(d, "sync: version synced from firmware file: '%s' -> '%s'", d->version, file_ver);
+    strncpy(d->version, file_ver, sizeof(d->version) - 1);
+    d->version[sizeof(d->version) - 1] = '\0';
 }
 
 /* ---------- 固件版本管理: 保存历史版本 (使用指定的固件文件) ---------- */
@@ -1068,6 +1092,9 @@ static int client_rd_register(device_t *d) {
         return -1;
     }
 
+    /* 注册前先从固件文件同步版本号到内存 (支持手动改固件文件后重新注册) */
+    sync_version_from_fwfile(d);
+
     coap_msg_t req, resp;
     memset(&req, 0, sizeof(req));
     req.code = COAP_POST;
@@ -1125,6 +1152,9 @@ static int client_rd_update(device_t *d) {
         dev_log(d, "RD: not registered, skip update");
         return -1;
     }
+
+    /* 更新注册前也从固件文件同步版本号 */
+    sync_version_from_fwfile(d);
 
     coap_msg_t req, resp;
     memset(&req, 0, sizeof(req));

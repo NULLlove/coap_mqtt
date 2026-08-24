@@ -3,10 +3,13 @@
  *
  * 覆盖功能:
  *   - 报文类型: CONNECT / CONNACK / PUBLISH / PUBACK /
- *               SUBSCRIBE / SUBACK / PINGREQ / PINGRESP / DISCONNECT
+ *               SUBSCRIBE / SUBACK / UNSUBSCRIBE / UNSUBACK /
+ *               PINGREQ / PINGRESP / DISCONNECT
  *   - 剩余长度变长编码 (1-4 字节)
  *   - QoS 0 (最多一次) 与 QoS 1 (至少一次, PUBLISH+PUBACK)
  *   - 主题通配符匹配 (+ 单层, # 多层)
+ *   - 遗嘱消息 (Last Will and Testament)
+ *   - 保留消息 (Retained Messages)
  *   - TCP 长连接 (Winsock2)
  *
  * 仅依赖 Windows Winsock2, 无第三方库。
@@ -29,15 +32,17 @@
 /* ===================== 协议常量 ===================== */
 
 /* MQTT 报文类型 */
-#define MQTT_CONNECT     1   // 连接请求
-#define MQTT_CONNACK     2   // 连接确认响应
-#define MQTT_PUBLISH     3   // 发布消息
-#define MQTT_PUBACK      4   // 发布确认响应
-#define MQTT_SUBSCRIBE   8   // 订阅请求
-#define MQTT_SUBACK      9   // 订阅确认响应
-#define MQTT_PINGREQ    12  // 心跳请求
-#define MQTT_PINGRESP   13  // 心跳响应
-#define MQTT_DISCONNECT   14  // 断开连接请求
+#define MQTT_CONNECT      1   // 连接请求
+#define MQTT_CONNACK      2   // 连接确认响应
+#define MQTT_PUBLISH      3   // 发布消息
+#define MQTT_PUBACK       4   // 发布确认响应
+#define MQTT_SUBSCRIBE    8   // 订阅请求
+#define MQTT_SUBACK       9   // 订阅确认响应
+#define MQTT_UNSUBSCRIBE 10   // 取消订阅请求
+#define MQTT_UNSUBACK    11   // 取消订阅确认响应
+#define MQTT_PINGREQ     12   // 心跳请求
+#define MQTT_PINGRESP    13   // 心跳响应
+#define MQTT_DISCONNECT  14   // 断开连接请求
 
 /* QoS 级别 */
 #define MQTT_QOS_0  0   // 最多一次
@@ -72,6 +77,10 @@ typedef struct {
     uint8_t        payload_buf[MQTT_MAX_MSG];
     const uint8_t *payload;
     size_t         payload_len;
+
+    /* CONNECT 遗嘱消息字段 (will_flag 自动根据 will_topic 是否非空判断) */
+    char     will_topic[MQTT_TOPIC_MAX];
+    char     will_message[MQTT_MAX_MSG];
 } mqtt_msg_t;
 
 /* ===================== API ===================== */
@@ -104,10 +113,12 @@ int  mqtt_decode_remaining_length(const uint8_t *buf, size_t len, uint32_t *valu
 int mqtt_topic_match(const char *filter, const char *topic);  /* 1=匹配, 0=不匹配 */
 
 /* 构造常用报文的辅助函数 */
-void mqtt_make_connect(mqtt_msg_t *m, const char *client_id, uint16_t keepalive);
+void mqtt_make_connect(mqtt_msg_t *m, const char *client_id, uint16_t keepalive,
+                       const char *will_topic, const char *will_message);
 void mqtt_make_publish(mqtt_msg_t *m, const char *topic, const uint8_t *payload,
                        size_t payload_len, uint8_t qos, uint8_t retain, uint16_t packet_id);
 void mqtt_make_subscribe(mqtt_msg_t *m, const char *topic_filter, uint8_t qos, uint16_t packet_id);
+void mqtt_make_unsubscribe(mqtt_msg_t *m, const char *topic_filter, uint16_t packet_id);
 void mqtt_make_puback(mqtt_msg_t *m, uint16_t packet_id);
 void mqtt_make_pingreq(mqtt_msg_t *m);
 

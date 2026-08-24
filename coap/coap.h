@@ -126,7 +126,7 @@ typedef struct {
     uint16_t number;                          /* 选项编号 (如 OPT_URI_PATH=11) */
     uint16_t length;                          /* 值长度 */
     uint8_t  value[COAP_OPT_VALUE_MAX];       /* 值数据 (本地存储, 避免悬垂指针) */
-} coap_option_t;
+} coap_option_t; 
 
 /* ===================== 报文逻辑表示 ===================== */
 typedef struct {

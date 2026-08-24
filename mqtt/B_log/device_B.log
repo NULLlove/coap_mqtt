@@ -1,12 +1,24 @@
-[2026-08-17 20:07:06] [B] ==== Device B started: broker=127.0.0.1:1883  version=1.0.0-B ====
-[2026-08-17 20:07:07] [B] Auto-publishing log and fwinfo resources...
-[2026-08-17 20:07:07] [B] pub_rd: -> PUBLISH to 'registry/B/log' (165 bytes)
-[2026-08-17 20:07:07] [B] recv_thread: received PUBACK for packet_id=63850
-[2026-08-17 20:07:07] [B] pub_rd: -> PUBLISH to 'registry/B/fwinfo' (24 bytes)
-[2026-08-17 20:07:07] [B] recv_thread: received PUBACK for packet_id=63851
-[2026-08-17 20:07:10] [B] Command: sub_rd A log
-[2026-08-17 20:07:10] [B] sub_rd: -> SUBSCRIBE to 'registry/A/log'
-[2026-08-17 20:07:10] [B] Saved peer A log to 'B_log/peer_log_A.log' (165 bytes)
-[2026-08-17 20:07:10] [B] recv_thread: captured pending SUBACK (pkt_id=63852)
-[2026-08-17 20:07:10] [B] sub_rd: SUBACK received for 'registry/A/log'
-[2026-08-17 20:07:46] [B] ==== Device B finished: version=1.0.0-B ====
+[2026-08-24 16:59:12] [B] ==== Device B started: broker=127.0.0.1:1883  version=1.0.0-B ====
+[2026-08-24 16:59:13] [B] Auto-publishing log, fwinfo and status resources...
+[2026-08-24 16:59:13] [B] pub_rd: -> PUBLISH to 'registry/B/log' (173 bytes)
+[2026-08-24 16:59:13] [B] recv_thread: received PUBACK for packet_id=2016
+[2026-08-24 16:59:13] [B] pub_rd: -> PUBLISH to 'registry/B/fwinfo' (24 bytes)
+[2026-08-24 16:59:13] [B] recv_thread: received PUBACK for packet_id=2017
+[2026-08-24 16:59:13] [B] recv_thread: received PUBACK for packet_id=2018
+[2026-08-24 16:59:56] [B] Command: pub_rd log
+[2026-08-24 16:59:56] [B] pub_rd: -> PUBLISH to 'registry/B/log' (603 bytes)
+[2026-08-24 16:59:56] [B] recv_thread: received PUBACK for packet_id=2019
+[2026-08-24 17:00:15] [B] Command: pub_rd firmware
+[2026-08-24 17:00:15] [B] pub_rd: -> PUBLISH to 'registry/B/firmware' (268 bytes)
+[2026-08-24 17:00:15] [B] recv_thread: received PUBACK for packet_id=2020
+[2026-08-24 17:01:24] [B] Status: id=B, broker=127.0.0.1:1883, version=1.0.0-B
+[2026-08-24 17:01:36] [B] Command: sub_rd A firmware
+[2026-08-24 17:01:36] [B] sub_rd: -> SUBSCRIBE to 'registry/A/firmware'
+[2026-08-24 17:01:36] [B] Saved peer A firmware to 'B_bin/peer_firmware_A.bin' (268 bytes)
+[2026-08-24 17:01:36] [B] New firmware from A: version=1.0.0-A (last=(none), current=1.0.0-B), upgrading...
+[2026-08-24 17:01:37] [B] *** Firmware upgraded: 1.0.0-A → 1.0.1-B (from A) ***
+[2026-08-24 17:01:37] [B] pub_rd: -> PUBLISH to 'registry/B/fwinfo' (24 bytes)
+[2026-08-24 17:01:37] [B] recv_thread: captured pending SUBACK (pkt_id=2021)
+[2026-08-24 17:01:37] [B] sub_rd: SUBACK received for 'registry/A/firmware'
+[2026-08-24 17:01:37] [B] recv_thread: received PUBACK for packet_id=2022
+[2026-08-24 17:10:05] [B] ==== Device B finished: version=1.0.1-B ====

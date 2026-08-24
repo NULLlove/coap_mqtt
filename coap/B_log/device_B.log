@@ -1,17 +1,19 @@
-[2026-08-17 18:44:41] [B] ==== Device B started: listen=:5684  version=1.0.0-B ====
-[2026-08-17 18:44:41] [B] RD mode: RD=127.0.0.1:5685, peer_id=A
-[2026-08-17 18:44:41] [B] Protocol log file: B_log/proto_B.log
-[2026-08-17 18:44:41] [B] RD: auto-registering with RD server...
-[2026-08-17 18:44:42] [B] RD: -> POST /rd?ep=B&base=coap://127.0.0.1:5684&d=local&et=3600 to 127.0.0.1:5685
-[2026-08-17 18:44:42] [B] client: built 138 bytes for uri_path='rd' uri_query='ep=B&base=coap://127.0.0.1:5684&d=local&et=3600&from=B':
-[2026-08-17 18:44:42] [B] client: sent request msg_id=58905 to 127.0.0.1:5685, waiting for ACK...
-[2026-08-17 18:44:42] [B] client: received 12 bytes from 127.0.0.1:5685
-[2026-08-17 18:44:42] [B] client: parsed response: msg_id=58905 (expected 58905), type=2, code=41
-[2026-08-17 18:44:42] [B] RD: <- 2.01 Created (registration SUCCESS)
-[2026-08-17 18:44:45] [B] Command: rd_deregister
-[2026-08-17 18:44:45] [B] RD: -> DELETE /rd/B to 127.0.0.1:5685
-[2026-08-17 18:44:45] [B] client: built 16 bytes for uri_path='rd/B' uri_query='from=B':
-[2026-08-17 18:44:45] [B] client: sent request msg_id=58906 to 127.0.0.1:5685, waiting for ACK...
-[2026-08-17 18:44:45] [B] client: received 14 bytes from 127.0.0.1:5685
-[2026-08-17 18:44:45] [B] client: parsed response: msg_id=58906 (expected 58906), type=2, code=42
-[2026-08-17 18:44:45] [B] RD: deregister SUCCESS
+[11:17:59] [B] ==== Device B started: srv=:5684, mode=SCAN, version=1.0.0-B ====
+[11:17:59] [B]   scan target: 127.0.0.1 ports 5683-5687
+[11:18:24] [B] server: <- GET /well-known/core from 127.0.0.1:49457 (type=1, msg_id=47074)
+[11:18:24] [B] server: -> 2.05 /.well-known/core to 127.0.0.1:49457
+[11:18:24] [B] server: -> 2.05 Content to 127.0.0.1:49457 (slen=113, payload=102)
+[11:18:34] [B] server: <- GET /log from 127.0.0.1:49457 (type=0, msg_id=47075)
+[11:18:34] [B] server: -> 2.05 /log (463 bytes) to 127.0.0.1:49457
+[11:18:34] [B] server: -> 2.05 Content to 127.0.0.1:49457 (slen=470, payload=463)
+[11:20:02] [B] discover: -> NON GET /.well-known/core to 127.0.0.1 ports 5683-5687 (mode=SCAN, token=306e9ffc, wait=3000ms)
+[11:20:02] [B] discover: + peer 127.0.0.1:5683 ver=1.0.0-A (4 resources)
+[11:20:02] [B]   /fwinfo rt="version" ver="1.0.0-A"
+[11:20:02] [B]   /log rt="log"
+[11:20:02] [B]   /firmware rt="fw"
+[11:20:02] [B]   /.well-known/core rt="core"
+[11:20:05] [B] discover: finished, 1 new peer(s), total 1
+[11:20:18] [B] client: -> GET /log to 127.0.0.1:5683 (msg_id=47080, retry=0)
+[11:20:18] [B] client: <- 2.05 Content from 127.0.0.1:5683 (msg_id=47080)
+[11:20:18] [B] get_log: peer 127.0.0.1:5683 -> 2.05 Content (1195 bytes):
+[11:20:18] [B] get_log: saved to B_log/peer_log_127.0.0.1_5683.log (1195 bytes)

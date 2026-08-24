@@ -271,7 +271,6 @@ typedef struct {
 | `/fwinfo`   | GET | 返回当前固件版本和大小；支持 `?list` 返回版本列表；支持 `?version=XXX` 返回历史固件 |
 | `/log`      | GET | 返回日志文件内容；支持 `?start_time=&end_time=` 按时间过滤             |
 | `/firmware` | GET | 返回当前固件文件 (Block2 分块传输)                                 |
-| `/firmware` | PUT | 接收固件分块 (Block1)，写入固件文件并更新版本                            |
 
 #### RD 客户端操作函数
 

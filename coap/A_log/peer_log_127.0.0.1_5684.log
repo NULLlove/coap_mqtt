@@ -1,0 +1,6 @@
+[11:17:59] [B] ==== Device B started: srv=:5684, mode=SCAN, version=1.0.0-B ====
+[11:17:59] [B]   scan target: 127.0.0.1 ports 5683-5687
+[11:18:24] [B] server: <- GET /well-known/core from 127.0.0.1:49457 (type=1, msg_id=47074)
+[11:18:24] [B] server: -> 2.05 /.well-known/core to 127.0.0.1:49457
+[11:18:24] [B] server: -> 2.05 Content to 127.0.0.1:49457 (slen=113, payload=102)
+[11:18:34] [B] server: <- GET /log from 127.0.0.1:49457 (type=0, msg_id=47075)

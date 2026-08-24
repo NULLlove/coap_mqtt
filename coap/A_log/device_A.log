@@ -1,17 +1,19 @@
-[2026-08-17 18:44:37] [A] ==== Device A started: listen=:5683  version=1.0.0-A ====
-[2026-08-17 18:44:37] [A] RD mode: RD=127.0.0.1:5685, peer_id=B
-[2026-08-17 18:44:37] [A] Protocol log file: A_log/proto_A.log
-[2026-08-17 18:44:37] [A] RD: auto-registering with RD server...
-[2026-08-17 18:44:37] [A] RD: -> POST /rd?ep=A&base=coap://127.0.0.1:5683&d=local&et=3600 to 127.0.0.1:5685
-[2026-08-17 18:44:37] [A] client: built 138 bytes for uri_path='rd' uri_query='ep=A&base=coap://127.0.0.1:5683&d=local&et=3600&from=A':
-[2026-08-17 18:44:37] [A] client: sent request msg_id=58900 to 127.0.0.1:5685, waiting for ACK...
-[2026-08-17 18:44:37] [A] client: received 12 bytes from 127.0.0.1:5685
-[2026-08-17 18:44:37] [A] client: parsed response: msg_id=58900 (expected 58900), type=2, code=41
-[2026-08-17 18:44:37] [A] RD: <- 2.01 Created (registration SUCCESS)
-[2026-08-17 18:44:50] [A] Command: rd_lookup B
-[2026-08-17 18:44:50] [A] RD: -> GET /rd?ep=B to 127.0.0.1:5685
-[2026-08-17 18:44:50] [A] client: built 19 bytes for uri_path='rd' uri_query='ep=B&from=A':
-[2026-08-17 18:44:50] [A] client: sent request msg_id=58901 to 127.0.0.1:5685, waiting for ACK...
-[2026-08-17 18:44:50] [A] client: received 6 bytes from 127.0.0.1:5685
-[2026-08-17 18:44:50] [A] client: parsed response: msg_id=58901 (expected 58901), type=2, code=45
-[2026-08-17 18:44:50] [A] RD: lookup returned 2.05 Content (peer 'B' not registered), fallback to static
+[11:17:54] [A] ==== Device A started: srv=:5683, mode=SCAN, version=1.0.0-A ====
+[11:17:54] [A]   scan target: 127.0.0.1 ports 5683-5687
+[11:18:24] [A] discover: -> NON GET /.well-known/core to 127.0.0.1 ports 5683-5687 (mode=SCAN, token=ebbb2d24, wait=3000ms)
+[11:18:24] [A] discover: + peer 127.0.0.1:5684 ver=1.0.0-B (4 resources)
+[11:18:24] [A]   /fwinfo rt="version" ver="1.0.0-B"
+[11:18:24] [A]   /log rt="log"
+[11:18:24] [A]   /firmware rt="fw"
+[11:18:24] [A]   /.well-known/core rt="core"
+[11:18:26] [A] discover: finished, 1 new peer(s), total 1
+[11:18:34] [A] client: -> GET /log to 127.0.0.1:5684 (msg_id=47075, retry=0)
+[11:18:34] [A] client: <- 2.05 Content from 127.0.0.1:5684 (msg_id=47075)
+[11:18:34] [A] get_log: peer 127.0.0.1:5684 -> 2.05 Content (463 bytes):
+[11:18:34] [A] get_log: saved to A_log/peer_log_127.0.0.1_5684.log (463 bytes)
+[11:20:02] [A] server: <- GET /well-known/core from 127.0.0.1:57642 (type=1, msg_id=47079)
+[11:20:02] [A] server: -> 2.05 /.well-known/core to 127.0.0.1:57642
+[11:20:02] [A] server: -> 2.05 Content to 127.0.0.1:57642 (slen=113, payload=102)
+[11:20:18] [A] server: <- GET /log from 127.0.0.1:57642 (type=0, msg_id=47080)
+[11:20:18] [A] server: -> 2.05 /log (1195 bytes) to 127.0.0.1:57642
+[11:20:18] [A] server: -> 2.05 Content to 127.0.0.1:57642 (slen=1202, payload=1195)

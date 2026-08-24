@@ -115,7 +115,7 @@ static int append_option(uint8_t *buf, size_t buflen, size_t *off,
     else if (d_ext_bytes == 2) { buf[(*off)++] = (uint8_t)(d_ext >> 8); buf[(*off)++] = (uint8_t)(d_ext & 0xff); }
     if (l_ext_bytes == 1)      buf[(*off)++] = (uint8_t)l_ext;
     else if (l_ext_bytes == 2) { buf[(*off)++] = (uint8_t)(l_ext >> 8); buf[(*off)++] = (uint8_t)(l_ext & 0xff); }
-    memcpy(buf + *off, value, value_len);
+    memcpy(buf + *off, value    , value_len);
     *off += value_len;
     *last_num = opt_num;
     return 0;
@@ -402,6 +402,8 @@ const char *coap_method_name(uint8_t code) {
     }
 }
 
+
+//根据响应码查询COAP响应名称
 const char *coap_response_name(uint8_t code) {
     switch (code) {
         /* 2.xx Success */

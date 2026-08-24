@@ -16,6 +16,7 @@
  *   find_all               - 查询服务器中所有可订阅资源 (订阅 registry/+/info)
  *   pub_rd <topic>         - 向服务器发布资源 (log/firmware/fwinfo)
  *   sub_rd <id> <topic>   - 订阅指定客户端的资源
+ *   unsub_rd <id> <topic> - 取消订阅指定客户端的资源
  *   del_rd <topic>         - 删除本客户端的指定资源
  *   status                 - 显示设备状态
  *   help                   - 显示帮助
@@ -43,6 +44,7 @@ typedef struct {
 
     char        version[32];
     char        original_version[32];
+    char        last_peer_fw_ver[32];  /* 上次收到的对端固件版本, 用于判断是否需要升级 */
 
     char        fw_path[64];
     char        fw_orig_path[64];
@@ -50,10 +52,13 @@ typedef struct {
     char        proto_log_path[64];
 
     CRITICAL_SECTION lock;
+    CRITICAL_SECTION send_lock;   /* 保护多线程并发 MQTT 发送 */
     FILE       *log_fp;
     FILE       *proto_log_fp;
     SOCKET      sock;
     volatile int running;
+    volatile int auto_pub_log;    /* 连接建立后启用: dev_log 自动发布新日志 */
+    volatile int suppress_auto_pub; /* recv_thread 处理对端消息时置 1, 防止日志反馈循环 */
     uint16_t    next_packet_id;
 
     /* Pending response tracking (for SUBACK etc.) */
@@ -90,6 +95,23 @@ static void dev_log(device_t *d, const char *fmt, ...) {
         fflush(d->log_fp);
     }
     LeaveCriticalSection(&d->lock);
+
+    /* 自动发布新日志条目 (retain=0, QoS 0, 增量推送给订阅者) */
+    if (d->auto_pub_log && !d->suppress_auto_pub && d->sock != INVALID_SOCKET) {
+        char formatted[640];
+        int flen = snprintf(formatted, sizeof(formatted),
+                            "[%s] [%s] %.*s\n", time_str, d->id, n, line);
+        if (flen > 0) {
+            char topic[MQTT_TOPIC_MAX];
+            snprintf(topic, sizeof(topic), "registry/%s/log", d->id);
+            mqtt_msg_t msg;
+            mqtt_make_publish(&msg, topic, (uint8_t *)formatted, (size_t)flen,
+                              MQTT_QOS_0, 0, 0);
+            EnterCriticalSection(&d->send_lock);
+            mqtt_send_packet(d->sock, &msg);
+            LeaveCriticalSection(&d->send_lock);
+        }
+    }
 }
 
 static void proto_log(device_t *d, const char *direction, const mqtt_msg_t *msg) {
@@ -159,7 +181,9 @@ static void publish_resource(device_t *d, const char *topic_type,
     mqtt_make_publish(&msg, topic, payload, payload_len, MQTT_QOS_1, 1, d->next_packet_id++);
     proto_log(d, "SEND (PUBLISH)", &msg);
     dev_log(d, "pub_rd: -> PUBLISH to '%s' (%zu bytes)", topic, payload_len);
+    EnterCriticalSection(&d->send_lock);
     mqtt_send_packet(d->sock, &msg);
+    LeaveCriticalSection(&d->send_lock);
 }
 
 /* 发布日志资源 */
@@ -296,6 +320,32 @@ static void subscribe_resource(device_t *d, const char *peer_id, const char *top
     }
 }
 
+/* 取消订阅指定主题 */
+static void unsubscribe_resource(device_t *d, const char *topic_filter) {
+    uint16_t pkt_id = d->next_packet_id++;
+    mqtt_msg_t unsub;
+    mqtt_make_unsubscribe(&unsub, topic_filter, pkt_id);
+    proto_log(d, "SEND (UNSUBSCRIBE)", &unsub);
+    dev_log(d, "unsub_rd: -> UNSUBSCRIBE from '%s'", topic_filter);
+
+    pending_set(d, pkt_id, MQTT_UNSUBACK);
+    EnterCriticalSection(&d->send_lock);
+    int rc = mqtt_send_packet(d->sock, &unsub);
+    LeaveCriticalSection(&d->send_lock);
+    if (rc < 0) {
+        pending_clear(d);
+        dev_log(d, "unsub_rd: send failed for '%s'", topic_filter);
+        return;
+    }
+
+    mqtt_msg_t unsuback;
+    if (pending_wait(d, &unsuback, 5000) == 0) {
+        dev_log(d, "unsub_rd: UNSUBACK received for '%s'", topic_filter);
+    } else {
+        dev_log(d, "unsub_rd: UNSUBACK timeout for '%s'", topic_filter);
+    }
+}
+
 /* 查询所有可订阅资源 (订阅 registry/+/info) */
 static void find_all_resources(device_t *d) {
     uint16_t pkt_id = d->next_packet_id++;
@@ -330,6 +380,12 @@ static void find_all_resources(device_t *d) {
 static void delete_resource(device_t *d, const char *topic_type) {
     char topic[MQTT_TOPIC_MAX];
     snprintf(topic, sizeof(topic), "registry/%s/%s", d->id, topic_type);
+
+    /* 如果删除的是 log 资源, 关闭日志自动发布, 防止后续 dev_log 重新注册 */
+    if (strcmp(topic_type, "log") == 0) {
+        d->auto_pub_log = 0;
+        dev_log(d, "del_rd: auto_pub_log disabled (log resource being deleted)");
+    }
 
     /* 发送删除消息 (retain=1, 清除 broker 上的保留消息) */
     const char *delete_payload = "__DELETE__";
@@ -379,7 +435,7 @@ static void save_subscribed_resource(device_t *d, const char *peer_id,
         }
     } else if (strcmp(topic_type, "firmware") == 0) {
         /* 固件: <id>_log/peer_firmware_<peer_id>.bin */
-        snprintf(filepath, sizeof(filepath), "%s_log/peer_firmware_%s.bin", d->id, peer_id);
+        snprintf(filepath, sizeof(filepath), "%s_bin/peer_firmware_%s.bin", d->id, peer_id);
         FILE *fp = fopen(filepath, "wb");
         if (fp) {
             fwrite(payload, 1, payload_len, fp);
@@ -395,6 +451,96 @@ static void save_subscribed_resource(device_t *d, const char *peer_id,
             fclose(fp);
             dev_log(d, "Saved peer %s fwinfo to '%s' (%zu bytes)", peer_id, filepath, payload_len);
         }
+    }
+}
+
+/* 检查对端固件版本, 若更新则自动升级本设备固件 */
+static int check_and_upgrade_firmware(device_t *d, const char *peer_id,
+                                       const char *filepath) {
+    /* 读取对端固件版本和大小 */
+    char peer_ver[32] = {0};
+    size_t peer_fw_size = read_fw_info(filepath, peer_ver, sizeof(peer_ver));
+    if (peer_ver[0] == '\0' || peer_fw_size == 0) return 0;
+
+    /* 与上次收到的对端固件版本比较, 版本没变则不升级 */
+    if (d->last_peer_fw_ver[0] != '\0' && strcmp(peer_ver, d->last_peer_fw_ver) == 0) {
+        dev_log(d, "Firmware from %s: version %s same as last received, no upgrade needed",
+                peer_id, peer_ver);
+        return 0;
+    }
+
+    dev_log(d, "New firmware from %s: version=%s (last=%s, current=%s), upgrading...",
+            peer_id, peer_ver,
+            d->last_peer_fw_ver[0] ? d->last_peer_fw_ver : "(none)", d->version);
+
+    /* 记录本次收到的对端固件版本 */
+    strncpy(d->last_peer_fw_ver, peer_ver, sizeof(d->last_peer_fw_ver) - 1);
+    d->last_peer_fw_ver[sizeof(d->last_peer_fw_ver) - 1] = '\0';
+
+    /* 复制对端固件到本设备固件文件 (Windows: 路径中的 / 需转为 \) */
+    char fw_dst[256], fw_src[256];
+    strncpy(fw_dst, d->fw_path, sizeof(fw_dst) - 1);
+    fw_dst[sizeof(fw_dst) - 1] = '\0';
+    strncpy(fw_src, filepath, sizeof(fw_src) - 1);
+    fw_src[sizeof(fw_src) - 1] = '\0';
+    for (int i = 0; fw_dst[i]; i++) { if (fw_dst[i] == '/') fw_dst[i] = '\\'; }
+    for (int i = 0; fw_src[i]; i++) { if (fw_src[i] == '/') fw_src[i] = '\\'; }
+
+    char cmd[512];
+    snprintf(cmd, sizeof(cmd), "cmd /c copy /y \"%s\" \"%s\" >nul 2>&1", fw_src, fw_dst);
+    int rc = system(cmd);
+
+    if (rc == 0) {
+        /* 版本号累加: 1.0.0-B → 1.0.1-B → ... → 1.0.9-B → 1.1.0-B
+         * 保留本地后缀, 只递增 patch, 进位规则: patch>9 → patch=0,minor++; minor>9 → minor=0,major++ */
+        int major = 1, minor = 0, patch = 0;
+        char suffix[16] = {0};
+        if (sscanf(d->version, "%d.%d.%d-%15s", &major, &minor, &patch, suffix) >= 3) {
+            patch++;
+            if (patch > 9) { patch = 0; minor++; }
+            if (minor > 9) { minor = 0; major++; }
+            snprintf(d->version, sizeof(d->version), "%d.%d.%d-%s", major, minor, patch, suffix);
+        } else {
+            char newver[32];
+            snprintf(newver, sizeof(newver), "%s-v2", d->version);
+            strncpy(d->version, newver, sizeof(d->version) - 1);
+            d->version[sizeof(d->version) - 1] = '\0';
+        }
+
+        /* 把新版本号写入固件文件首行 (覆盖原首行, 保留 body) */
+        FILE *fw = fopen(d->fw_path, "r+b");
+        if (fw) {
+            char line[64];
+            if (fgets(line, sizeof(line), fw)) {
+                long body_offset = ftell(fw);
+                fseek(fw, 0, SEEK_END);
+                long total = ftell(fw);
+                long body_len = total - body_offset;
+                uint8_t *body = body_len > 0 ? (uint8_t *)malloc((size_t)body_len) : NULL;
+                if (body && body_len > 0) {
+                    fseek(fw, body_offset, SEEK_SET);
+                    fread(body, 1, (size_t)body_len, fw);
+                }
+                fclose(fw);
+                fw = fopen(d->fw_path, "wb");
+                if (fw) {
+                    fprintf(fw, "%s\n", d->version);
+                    if (body && body_len > 0)
+                        fwrite(body, 1, (size_t)body_len, fw);
+                    fclose(fw);
+                }
+                free(body);
+            } else {
+                fclose(fw);
+            }
+        }
+
+        dev_log(d, "*** Firmware upgraded: %s → %s (from %s) ***",
+                peer_ver, d->version, peer_id);
+        return 1;
+    } else {
+        dev_log(d, "Firmware upgrade failed (copy error %d)", rc);
+        return 0;
     }
 }
 
@@ -417,11 +563,12 @@ static DWORD WINAPI recv_thread(LPVOID arg) {
         if (pending_check_and_capture(d, &msg)) {
             char type_name[16];
             switch (msg.type) {
-                case MQTT_SUBACK:  strcpy(type_name, "SUBACK"); break;
-                case MQTT_PUBACK:  strcpy(type_name, "PUBACK"); break;
-                case MQTT_CONNACK: strcpy(type_name, "CONNACK"); break;
-                case MQTT_PINGRESP:strcpy(type_name, "PINGRESP"); break;
-                default:           snprintf(type_name, sizeof(type_name), "TYPE%u", msg.type);
+                case MQTT_SUBACK:   strcpy(type_name, "SUBACK"); break;
+                case MQTT_UNSUBACK: strcpy(type_name, "UNSUBACK"); break;
+                case MQTT_PUBACK:   strcpy(type_name, "PUBACK"); break;
+                case MQTT_CONNACK:  strcpy(type_name, "CONNACK"); break;
+                case MQTT_PINGRESP: strcpy(type_name, "PINGRESP"); break;
+                default:            snprintf(type_name, sizeof(type_name), "TYPE%u", msg.type);
             }
             dev_log(d, "recv_thread: captured pending %s (pkt_id=%u)", type_name, msg.packet_id);
             continue;
@@ -429,6 +576,9 @@ static DWORD WINAPI recv_thread(LPVOID arg) {
 
         if (msg.type == MQTT_PUBLISH) {
             proto_log(d, "RECV (PUBLISH)", &msg);
+
+            /* 抑制处理对端消息时产生的日志自动发布, 防止互相订阅时的反馈循环 */
+            d->suppress_auto_pub = 1;
 
             /* 显示接收到的资源内容 */
             printf("\n[%s]   ===== Received Resource =====\n", d->id);
@@ -448,8 +598,32 @@ static DWORD WINAPI recv_thread(LPVOID arg) {
             char peer_id[16], topic_type[32];
             if (parse_peer_topic(msg.topic, peer_id, sizeof(peer_id),
                                  topic_type, sizeof(topic_type))) {
-                save_subscribed_resource(d, peer_id, topic_type,
-                                         msg.payload, msg.payload_len);
+                /* 日志资源: retain=1 全量覆盖, retain=0 增量追加 */
+                if (strcmp(topic_type, "log") == 0) {
+                    char filepath[256];
+                    snprintf(filepath, sizeof(filepath), "%s_log/peer_log_%s.log", d->id, peer_id);
+                    const char *mode = msg.retain ? "wb" : "ab";
+                    FILE *fp = fopen(filepath, mode);
+                    if (fp) {
+                        fwrite(msg.payload, 1, msg.payload_len, fp);
+                        fclose(fp);
+                        dev_log(d, "Saved peer %s log to '%s' (%zu bytes, %s)",
+                                peer_id, filepath, msg.payload_len,
+                                msg.retain ? "overwrite" : "append");
+                    }
+                } else {
+                    save_subscribed_resource(d, peer_id, topic_type,
+                                             msg.payload, msg.payload_len);
+                    /* 固件文件保存后, 检查并自动升级 */
+                    if (strcmp(topic_type, "firmware") == 0) {
+                        char fw_filepath[256];
+                        snprintf(fw_filepath, sizeof(fw_filepath),
+                                 "%s_bin/peer_firmware_%s.bin", d->id, peer_id);
+                        if (check_and_upgrade_firmware(d, peer_id, fw_filepath)) {
+                            publish_fwinfo(d);
+                        }
+                    }
+                }
             }
 
             /* QoS1: 发送 PUBACK */
@@ -458,10 +632,17 @@ static DWORD WINAPI recv_thread(LPVOID arg) {
                 mqtt_make_puback(&ack, msg.packet_id);
                 mqtt_send_packet(d->sock, &ack);
             }
+
+            d->suppress_auto_pub = 0;  /* 恢复日志自动发布 */
         } else if (msg.type == MQTT_PUBACK) {
+            /* 抑制 auto_pub: PUBACK 是协议级 ACK, 不应触发日志自动发布重新注册资源 */
+            d->suppress_auto_pub = 1;
             dev_log(d, "recv_thread: received PUBACK for packet_id=%u", msg.packet_id);
+            d->suppress_auto_pub = 0;
         } else if (msg.type == MQTT_SUBACK) {
             dev_log(d, "recv_thread: received SUBACK (pkt_id=%u, no pending)", msg.packet_id);
+        } else if (msg.type == MQTT_UNSUBACK) {
+            dev_log(d, "recv_thread: received UNSUBACK (pkt_id=%u, no pending)", msg.packet_id);
         } else if (msg.type == MQTT_PINGRESP) {
             /* PINGRESP 静默处理 */
         } else {
@@ -491,6 +672,7 @@ int main(int argc, char **argv) {
     device_t d;
     memset(&d, 0, sizeof(d));
     InitializeCriticalSection(&d.lock);
+    InitializeCriticalSection(&d.send_lock);
     InitializeCriticalSection(&d.resp_lock);
     d.resp_event = CreateEvent(NULL, TRUE, FALSE, NULL);  /* manual-reset event */
     d.running = 1;
@@ -533,6 +715,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Usage: %s --id A --broker-ip 127.0.0.1 --broker-port 1883 [--version 1.0.0-A]\n", argv[0]);
         CloseHandle(d.resp_event);
         DeleteCriticalSection(&d.resp_lock);
+        DeleteCriticalSection(&d.send_lock);
         DeleteCriticalSection(&d.lock);
         return 1;
     }
@@ -541,6 +724,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "MQTT init failed\n");
         CloseHandle(d.resp_event);
         DeleteCriticalSection(&d.resp_lock);
+        DeleteCriticalSection(&d.send_lock);
         DeleteCriticalSection(&d.lock);
         return 1;
     }
@@ -552,13 +736,16 @@ int main(int argc, char **argv) {
         mqtt_cleanup();
         CloseHandle(d.resp_event);
         DeleteCriticalSection(&d.resp_lock);
+        DeleteCriticalSection(&d.send_lock);
         DeleteCriticalSection(&d.lock);
         return 1;
     }
 
-    /* 发送 CONNECT */
+    /* 发送 CONNECT (含遗嘱消息: 断开时通知其他客户端) */
     mqtt_msg_t conn;
-    mqtt_make_connect(&conn, d.id, 60);
+    char will_topic_buf[MQTT_TOPIC_MAX];
+    snprintf(will_topic_buf, sizeof(will_topic_buf), "registry/%s/status", d.id);
+    mqtt_make_connect(&conn, d.id, 60, will_topic_buf, "offline");
     mqtt_send_packet(d.sock, &conn);
 
     /* 等待 CONNACK - 此时 recv_thread 尚未启动, 可直接 recv */
@@ -569,6 +756,7 @@ int main(int argc, char **argv) {
         mqtt_cleanup();
         CloseHandle(d.resp_event);
         DeleteCriticalSection(&d.resp_lock);
+        DeleteCriticalSection(&d.send_lock);
         DeleteCriticalSection(&d.lock);
         return 1;
     }
@@ -606,12 +794,27 @@ int main(int argc, char **argv) {
     /* 启动心跳线程 */
     HANDLE ping_th = CreateThread(NULL, 0, ping_thread, &d, 0, NULL);
 
-    /* 启动时自动发布 log 和 fwinfo */
+    /* 启用日志自动发布: dev_log 产生的每条新日志将实时推送给订阅者 */
+    d.auto_pub_log = 1;
+
+    /* 启动时自动发布 log, fwinfo 和 status */
     Sleep(500);
-    dev_log(&d, "Auto-publishing log and fwinfo resources...");
+    dev_log(&d, "Auto-publishing log, fwinfo and status resources...");
     publish_log(&d);
     Sleep(200);
     publish_fwinfo(&d);
+    /* 发布在线状态 (retain=1, 遗嘱消息会在断开时覆盖为 "offline") */
+    {
+        char status_topic[MQTT_TOPIC_MAX];
+        snprintf(status_topic, sizeof(status_topic), "registry/%s/status", d.id);
+        const char *status_msg = "online";
+        mqtt_msg_t status_pub;
+        mqtt_make_publish(&status_pub, status_topic, (uint8_t *)status_msg,
+                          strlen(status_msg), MQTT_QOS_1, 1, d.next_packet_id++);
+        EnterCriticalSection(&d.send_lock);
+        mqtt_send_packet(d.sock, &status_pub);
+        LeaveCriticalSection(&d.send_lock);
+    }
 
     /* 交互式命令循环 */
     printf("\n=== MQTT Device %s Interactive Mode ===\n", d.id);
@@ -619,6 +822,7 @@ int main(int argc, char **argv) {
     printf("  find_all               - Query all subscribable resources on server\n");
     printf("  pub_rd <topic>         - Publish resource (log/firmware/fwinfo)\n");
     printf("  sub_rd <id> <topic>    - Subscribe to peer's resource\n");
+    printf("  unsub_rd <id> <topic>  - Unsubscribe from peer's resource\n");
     printf("  del_rd <topic>         - Delete own resource from server\n");
     printf("  status                 - Show device status\n");
     printf("  help                   - Show this help\n");
@@ -645,6 +849,7 @@ int main(int argc, char **argv) {
             printf("  find_all               - Query all subscribable resources on server\n");
             printf("  pub_rd <topic>         - Publish resource (log/firmware/fwinfo)\n");
             printf("  sub_rd <id> <topic>    - Subscribe to peer's resource\n");
+            printf("  unsub_rd <id> <topic>  - Unsubscribe from peer's resource\n");
             printf("  del_rd <topic>         - Delete own resource from server\n");
             printf("  status                 - Show device status\n");
             printf("  help                   - Show this help\n");
@@ -661,6 +866,7 @@ int main(int argc, char **argv) {
             while (*topic == ' ') topic++;
             dev_log(&d, "Command: pub_rd %s", topic);
             if (strcmp(topic, "log") == 0) {
+                d.auto_pub_log = 1;  /* 重新启用日志自动发布 */
                 publish_log(&d);
             } else if (strcmp(topic, "fwinfo") == 0) {
                 publish_fwinfo(&d);
@@ -677,6 +883,17 @@ int main(int argc, char **argv) {
                 subscribe_resource(&d, peer_id, topic_type);
             } else {
                 printf("[%s]   Usage: sub_rd <id> <topic> (e.g., sub_rd B log)\n", d.id);
+            }
+        } else if (!strncmp(cmd, "unsub_rd ", 9)) {
+            char peer_id[16] = {0};
+            char topic_type[32] = {0};
+            if (sscanf(cmd + 9, "%15s %31s", peer_id, topic_type) >= 2) {
+                char full_topic[MQTT_TOPIC_MAX];
+                snprintf(full_topic, sizeof(full_topic), "registry/%s/%s", peer_id, topic_type);
+                dev_log(&d, "Command: unsub_rd %s %s -> %s", peer_id, topic_type, full_topic);
+                unsubscribe_resource(&d, full_topic);
+            } else {
+                printf("[%s]   Usage: unsub_rd <id> <topic> (e.g., unsub_rd B log)\n", d.id);
             }
         } else if (!strncmp(cmd, "del_rd ", 7)) {
             const char *topic = cmd + 7;
@@ -696,6 +913,7 @@ int main(int argc, char **argv) {
 
     dev_log(&d, "==== Device %s finished: version=%s ====", d.id, d.version);
 
+    d.auto_pub_log = 0;
     d.running = 0;
     WaitForSingleObject(th, 2000);
     WaitForSingleObject(ping_th, 2000);
@@ -708,6 +926,7 @@ int main(int argc, char **argv) {
     mqtt_cleanup();
     CloseHandle(d.resp_event);
     DeleteCriticalSection(&d.resp_lock);
+    DeleteCriticalSection(&d.send_lock);
     DeleteCriticalSection(&d.lock);
     return 0;
 }

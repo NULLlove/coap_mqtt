@@ -157,7 +157,7 @@ static void cleanup_expired(rd_server_t *rd) {
 }
 
 /* ===================== 注册 API ===================== */
-
+//注册RD服务器中的资源
 int rd_register(rd_server_t *rd, const char *ep, const char *base,
                const char *domain, uint32_t ttl,
                const char *links_payload, size_t links_len) {
@@ -204,7 +204,7 @@ int rd_register(rd_server_t *rd, const char *ep, const char *base,
            ep, new_ep->ttl, new_ep->link_count);
     return 0;
 }
-
+//更新RD服务器中的端点
 int rd_update(rd_server_t *rd, const char *ep, const char *links_payload,
                size_t links_len, uint32_t ttl) {
     if (!rd || !ep) return -1;
@@ -229,6 +229,7 @@ int rd_update(rd_server_t *rd, const char *ep, const char *links_payload,
     return 0;
 }
 
+//删除RD服务器中的端点
 int rd_delete(rd_server_t *rd, const char *ep) {
     if (!rd || !ep) return -1;
 
@@ -252,7 +253,7 @@ int rd_delete(rd_server_t *rd, const char *ep) {
 }
 
 /* ===================== 查询 API ===================== */
-
+//根据资源类型查询RD服务器中的资源
 int rd_search_by_resource(rd_server_t *rd, const char *rt_filter,
                            char *out_buf, size_t buf_size) {
     if (!rd || !out_buf || buf_size == 0) return 0;
@@ -302,7 +303,7 @@ int rd_search_by_resource(rd_server_t *rd, const char *rt_filter,
     (void)match_count;
     return off;
 }
-
+//根据端点ID查询RD服务器中的资源
 int rd_search_by_endpoint(rd_server_t *rd, const char *ep_filter,
                            char *out_buf, size_t buf_size) {
     if (!rd || !out_buf || buf_size == 0) return 0;
@@ -353,7 +354,7 @@ int rd_search_by_endpoint(rd_server_t *rd, const char *ep_filter,
     (void)match_count;
     return off;
 }
-
+//根据域名查询RD服务器中的资源
 int rd_search_by_domain(rd_server_t *rd, const char *domain_filter,
                          char *out_buf, size_t buf_size) {
     if (!rd || !out_buf || buf_size == 0) return 0;
@@ -639,6 +640,7 @@ static void handle_rd_request(rd_server_t *rd, const coap_msg_t *req,
 }
 
 /* ===================== 服务器线程 ===================== */
+
 static DWORD WINAPI rd_server_thread(LPVOID arg) {
     rd_server_t *rd = (rd_server_t *)arg;
     uint8_t rbuf[RD_MAX_PAYLOAD];
@@ -677,6 +679,7 @@ static DWORD WINAPI rd_server_thread(LPVOID arg) {
     return 0;
 }
 
+//启动RD服务器
 int rd_server_start(rd_server_t *rd) {
     if (rd->running) return -1;
     rd->running = 1;
@@ -707,7 +710,7 @@ void rd_server_stop(rd_server_t *rd) {
 int main(int argc, char **argv) {
     rd_server_t rd;
     uint16_t port = RD_DEFAULT_PORT;
-    uint32_t ttl = RD_DEFAULT_TTL;
+    uint32_t ttl = RD_DEFAULT_TTL;  // 资源过期时间，3600s
 
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--port") && i + 1 < argc)
@@ -716,7 +719,8 @@ int main(int argc, char **argv) {
             ttl = (uint32_t)atoi(argv[++i]);
     }
 
-    if (rd_server_init(&rd, port, ttl) < 0) {
+    //初始化RD服务器
+    if (rd_server_init(&rd, port, ttl) < 0) {  
         printf("[RD] Init failed\n");
         return 1;
     }

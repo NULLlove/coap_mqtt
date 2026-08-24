@@ -164,6 +164,23 @@ static void sub_remove_by_sock(SOCKET sock) {
     LeaveCriticalSection(&g_lock);
 }
 
+/* 删除指定客户端对指定主题的订阅 */
+static void sub_remove_by_sock_and_topic(SOCKET sock, const char *topic) {
+    EnterCriticalSection(&g_lock);
+    subscription_t **pp = &g_subs;
+    while (*pp) {
+        if ((*pp)->sock == sock && strcmp((*pp)->topic, topic) == 0) {
+            subscription_t *del = *pp;
+            *pp = del->next;
+            free(del);
+            LeaveCriticalSection(&g_lock);
+            return;
+        }
+        pp = &(*pp)->next;
+    }
+    LeaveCriticalSection(&g_lock);
+}
+
 /* 转发 PUBLISH: 遍历订阅, 主题匹配则发送 */
 static int sub_forward(const char *topic, const uint8_t *payload, size_t payload_len,
                        uint8_t qos, uint16_t packet_id, SOCKET src_sock) {
@@ -334,6 +351,8 @@ typedef struct {
     char     client_id[MQTT_CLIENTID_MAX];
     char     ip[64];
     uint16_t port;
+    char     will_topic[MQTT_TOPIC_MAX];
+    char     will_message[MQTT_MAX_MSG];
 } client_ctx_t;
 
 static DWORD WINAPI client_thread(LPVOID arg) {
@@ -358,6 +377,15 @@ static DWORD WINAPI client_thread(LPVOID arg) {
                 cid[sizeof(ctx->client_id) - 1] = '\0';
                 printf("[broker]  CONNECT from %s (keepalive=%us)\n",
                        cid, m.packet_id);
+                /* 存储遗嘱消息 */
+                if (m.will_topic[0] != '\0') {
+                    strncpy(ctx->will_topic, m.will_topic, sizeof(ctx->will_topic) - 1);
+                    ctx->will_topic[sizeof(ctx->will_topic) - 1] = '\0';
+                    strncpy(ctx->will_message, m.will_message, sizeof(ctx->will_message) - 1);
+                    ctx->will_message[sizeof(ctx->will_message) - 1] = '\0';
+                    printf("[broker]  %s registered will: topic='%s'\n",
+                           cid, ctx->will_topic);
+                }
                 mqtt_msg_t ack;
                 memset(&ack, 0, sizeof(ack));
                 ack.type        = MQTT_CONNACK;
@@ -455,6 +483,19 @@ static DWORD WINAPI client_thread(LPVOID arg) {
             case MQTT_PUBACK: {
                 break;
             }
+            case MQTT_UNSUBSCRIBE: {
+                printf("[broker]  UNSUBSCRIBE from %s: '%s'\n", cid, m.topic);
+                sub_remove_by_sock_and_topic(sock, m.topic);
+                mqtt_msg_t ack;
+                memset(&ack, 0, sizeof(ack));
+                ack.type      = MQTT_UNSUBACK;
+                ack.packet_id = m.packet_id;
+                mqtt_send_packet(sock, &ack);
+                break;
+            }
+            case MQTT_UNSUBACK: {
+                break;
+            }
             case MQTT_DISCONNECT: {
                 printf("[broker]  %s sent DISCONNECT\n", cid);
                 goto done;
@@ -466,6 +507,14 @@ static DWORD WINAPI client_thread(LPVOID arg) {
     }
 
 done:
+    /* 发布遗嘱消息 (Last Will and Testament) */
+    if (ctx->will_topic[0] != '\0') {
+        uint16_t will_pkt_id = (uint16_t)(rand() & 0xffff);
+        sub_forward(ctx->will_topic, (uint8_t *)ctx->will_message,
+                    strlen(ctx->will_message), MQTT_QOS_1,
+                    will_pkt_id, sock);
+        printf("[broker]  %s will published: topic='%s'\n", cid, ctx->will_topic);
+    }
     sub_remove_by_sock(sock);
     registry_remove_by_sock(sock);
     mqtt_tcp_close(sock);
@@ -515,6 +564,8 @@ int main(void) {
         strncpy(ctx->ip, client_ip, sizeof(ctx->ip) - 1);
         ctx->port = client_port;
         ctx->client_id[0] = '\0';
+        ctx->will_topic[0] = '\0';
+        ctx->will_message[0] = '\0';
 
         InterlockedIncrement((volatile LONG *)&g_active_clients);
         g_ever_connected = 1;

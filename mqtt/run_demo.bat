@@ -29,6 +29,8 @@ echo   get_fw ^<version^> - Get peer firmware by version
 echo   upgrade          - Upgrade peer firmware
 echo   get_log          - Get peer log
 echo   do_all           - Execute all: get_fwinfo + upgrade + get_log
+echo   sub_rd ^<id^> ^<topic^> - Subscribe to peer's resource
+echo   unsub_rd ^<topic^>    - Unsubscribe from topic
 echo   status           - Show current device status
 echo   help             - Show help
 echo   quit             - Exit device
